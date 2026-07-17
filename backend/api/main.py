@@ -286,3 +286,39 @@ async def telemetry(limit: int = 100):
         return {"count": len(res.data), "rows": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/alerts", tags=["Predictive Maintenance"])
+async def alerts(
+    equipment: str | None = None,
+    severity: str | None = None,
+    unacked_only: bool = False,
+    limit: int = 50,
+):
+    """Return PM alerts — filter by equipment, severity, or unacknowledged."""
+    try:
+        q = supabase.table("pm_alerts").select("*")
+        if equipment:
+            q = q.eq("equipment", equipment)
+        if severity:
+            q = q.eq("severity", severity)
+        if unacked_only:
+            q = q.eq("acknowledged", False)
+        res = q.order("created_at", desc=True).limit(min(limit, 500)).execute()
+        return {"count": len(res.data), "alerts": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/alerts/{alert_id}/ack", tags=["Predictive Maintenance"])
+async def acknowledge_alert(alert_id: int):
+    """Mark an alert as acknowledged."""
+    try:
+        from datetime import datetime, timezone
+        supabase.table("pm_alerts").update({
+            "acknowledged": True,
+            "ack_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", alert_id).execute()
+        return {"status": "ok", "id": alert_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
