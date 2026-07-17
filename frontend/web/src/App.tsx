@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'combustion' | 'boiler' | 'turbine' | 'electrical' | 'apc' | 'watertreat' | 'wastewater' | 'ash' | 'lab'
+type Tab = 'overview' | 'combustion' | 'boiler' | 'turbine' | 'electrical' | 'apc' | 'watertreat' | 'wastewater' | 'ash' | 'lab' | 'predictive'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'overview',    label: 'Overview',    icon: Activity },
@@ -24,7 +24,22 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'wastewater',  label: 'Wastewater',  icon: Droplets },
   { id: 'ash',         label: 'Ash',         icon: Leaf },
   { id: 'lab',         label: 'Lab',         icon: Activity },
+  { id: 'predictive',  label: 'Predictive',  icon: CheckCircle },
 ]
+
+// ── PM Alert type ─────────────────────────────────────────────────────────────
+type PmAlert = {
+  id: number
+  created_at: string
+  equipment: string
+  signal: string
+  value: number | null
+  severity: 'warning' | 'critical'
+  type: 'lstm_anomaly' | 'limit'
+  message: string
+  acknowledged: boolean
+  ack_at: string | null
+}
 
 // Lab sample types
 type LabSample = {
@@ -189,6 +204,21 @@ export default function App() {
   const [formState, setFormState] = useState<Record<string, string>>({})
   const [formMeta, setFormMeta] = useState({ sample_ref: '', entered_by: '', notes: '', sampled_at: '' })
   const [latestFuel, setLatestFuel] = useState<LabSample | null>(null)
+  const [pmAlerts, setPmAlerts] = useState<PmAlert[]>([])
+  const [pmFilter, setPmFilter] = useState<'all' | 'warning' | 'critical'>('all')
+  const [pmEquip, setPmEquip] = useState<string>('all')
+
+  const fetchPmAlerts = useCallback(async () => {
+    const { data } = await supabase
+      .from('pm_alerts').select('*')
+      .order('created_at', { ascending: false }).limit(100)
+    if (data) setPmAlerts(data as PmAlert[])
+  }, [])
+
+  const ackAlert = useCallback(async (id: number) => {
+    await supabase.from('pm_alerts').update({ acknowledged: true, ack_at: new Date().toISOString() }).eq('id', id)
+    setPmAlerts(prev => prev.map(a => a.id === id ? { ...a, acknowledged: true } : a))
+  }, [])
 
   const fetchLab = useCallback(async (type: string) => {
     const { data } = await supabase
@@ -221,6 +251,7 @@ export default function App() {
   }, [])
 
   useEffect(() => { if (tab === 'lab') fetchLab(labType) }, [tab, labType, fetchLab])
+  useEffect(() => { if (tab === 'predictive') fetchPmAlerts() }, [tab, fetchPmAlerts])
 
   useEffect(() => {
     fetchLatest(); fetchHistory(); fetchLatestFuel()
@@ -1180,8 +1211,195 @@ export default function App() {
     )
   }
 
+  const renderPredictive = () => {
+    const EQUIP_LABELS: Record<string, string> = { turbine: 'Steam Turbine', boiler: 'Boiler', transformer: 'GSU Transformer' }
+    const EQUIP_ICONS: Record<string, string> = { turbine: '⚙️', boiler: '🔥', transformer: '⚡' }
+    const filtered = pmAlerts.filter(a =>
+      (pmFilter === 'all' || a.severity === pmFilter) &&
+      (pmEquip === 'all' || a.equipment === pmEquip)
+    )
+    const unacked   = pmAlerts.filter(a => !a.acknowledged).length
+    const criticals = pmAlerts.filter(a => a.severity === 'critical' && !a.acknowledged).length
+    const warnings  = pmAlerts.filter(a => a.severity === 'warning'  && !a.acknowledged).length
+
+    const equipStats = ['turbine', 'boiler', 'transformer'].map(eq => ({
+      eq,
+      total:    pmAlerts.filter(a => a.equipment === eq).length,
+      critical: pmAlerts.filter(a => a.equipment === eq && a.severity === 'critical' && !a.acknowledged).length,
+      warning:  pmAlerts.filter(a => a.equipment === eq && a.severity === 'warning'  && !a.acknowledged).length,
+      lastAt:   pmAlerts.find(a => a.equipment === eq)?.created_at,
+    }))
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* Summary cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          <div style={{ background: '#1e293b', border: '1.5px solid #334155', borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, color: '#64748b' }}>TOTAL ALERTS</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#e2e8f0' }}>{pmAlerts.length}</div>
+            <div style={{ fontSize: 10, color: '#64748b' }}>{unacked} unacknowledged</div>
+          </div>
+          <div style={{ background: criticals > 0 ? '#450a0a' : '#1e293b', border: `1.5px solid ${criticals > 0 ? '#ef4444' : '#334155'}`, borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8' }}>CRITICAL (UNACKED)</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: criticals > 0 ? '#ef4444' : '#e2e8f0' }}>{criticals}</div>
+            <div style={{ fontSize: 10, color: '#64748b' }}>Require immediate action</div>
+          </div>
+          <div style={{ background: warnings > 0 ? '#2d1d00' : '#1e293b', border: `1.5px solid ${warnings > 0 ? '#f59e0b' : '#334155'}`, borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8' }}>WARNING (UNACKED)</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: warnings > 0 ? '#f59e0b' : '#e2e8f0' }}>{warnings}</div>
+            <div style={{ fontSize: 10, color: '#64748b' }}>Monitor closely</div>
+          </div>
+          <div style={{ background: '#1e293b', border: '1.5px solid #334155', borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, color: '#64748b' }}>LSTM MODEL</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', marginTop: 4 }}>3 ACTIVE</div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Turbine · Boiler · Transformer</div>
+          </div>
+        </div>
+
+        {/* Equipment health cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {equipStats.map(({ eq, total, critical, warning, lastAt }) => {
+            const status = critical > 0 ? 'critical' : warning > 0 ? 'warning' : 'normal'
+            const colors: Record<string, { bg: string; border: string; text: string }> = {
+              critical: { bg: '#450a0a', border: '#ef4444', text: '#ef4444' },
+              warning:  { bg: '#2d1d00', border: '#f59e0b', text: '#f59e0b' },
+              normal:   { bg: '#052e16', border: '#22c55e', text: '#22c55e' },
+            }
+            const c = colors[status]
+            return (
+              <div key={eq} style={{ background: c.bg, border: `1.5px solid ${c.border}`, borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{EQUIP_ICONS[eq]} {EQUIP_LABELS[eq]}</div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                    background: c.border + '22', color: c.text, textTransform: 'uppercase',
+                  }}>{status}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Critical (unacked)<br /><span style={{ fontSize: 18, fontWeight: 700, color: critical > 0 ? '#ef4444' : '#e2e8f0' }}>{critical}</span></div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Warning (unacked)<br /><span style={{ fontSize: 18, fontWeight: 700, color: warning > 0 ? '#f59e0b' : '#e2e8f0' }}>{warning}</span></div>
+                </div>
+                <div style={{ fontSize: 9, color: '#475569', marginTop: 6 }}>
+                  Last alert: {lastAt ? new Date(lastAt).toLocaleString('en-GB') : '—'}
+                </div>
+                <button onClick={() => { setPmEquip(eq); setPmFilter('all') }} style={{
+                  marginTop: 8, width: '100%', padding: '4px 0', fontSize: 10,
+                  background: 'transparent', border: `1px solid ${c.border}`, borderRadius: 4,
+                  color: c.text, cursor: 'pointer',
+                }}>View alerts →</button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Alert table */}
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Alert Log
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              {/* severity filter */}
+              {(['all', 'warning', 'critical'] as const).map(f => (
+                <button key={f} onClick={() => setPmFilter(f)} style={{
+                  fontSize: 10, padding: '2px 8px', borderRadius: 4, cursor: 'pointer', border: 'none',
+                  background: pmFilter === f ? (f === 'critical' ? '#ef4444' : f === 'warning' ? '#f59e0b' : '#3b82f6') : '#334155',
+                  color: pmFilter === f ? '#fff' : '#94a3b8',
+                }}>{f.toUpperCase()}</button>
+              ))}
+              <div style={{ width: 1, background: '#334155' }} />
+              {/* equipment filter */}
+              {(['all', 'turbine', 'boiler', 'transformer'] as const).map(e => (
+                <button key={e} onClick={() => setPmEquip(e)} style={{
+                  fontSize: 10, padding: '2px 8px', borderRadius: 4, cursor: 'pointer', border: 'none',
+                  background: pmEquip === e ? '#1e40af' : '#334155',
+                  color: pmEquip === e ? '#fff' : '#94a3b8',
+                }}>{e === 'all' ? 'All equip.' : e}</button>
+              ))}
+              <button onClick={fetchPmAlerts} style={{
+                fontSize: 10, padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+                border: '1px solid #334155', background: 'transparent', color: '#64748b',
+              }}>↻ Refresh</button>
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: '#22c55e', fontSize: 12 }}>
+              ✓ No alerts matching filter
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {/* header row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '130px 90px 80px 80px 1fr 100px', gap: 8, padding: '4px 6px',
+                fontSize: 9, color: '#475569', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #334155' }}>
+                <span>Time</span><span>Equipment</span><span>Severity</span><span>Type</span><span>Message</span><span>Action</span>
+              </div>
+              {filtered.map(a => (
+                <div key={a.id} style={{
+                  display: 'grid', gridTemplateColumns: '130px 90px 80px 80px 1fr 100px', gap: 8,
+                  padding: '5px 6px', fontSize: 10, borderBottom: '1px solid #0f172a',
+                  background: a.acknowledged ? 'transparent' : a.severity === 'critical' ? 'rgba(239,68,68,0.06)' : 'rgba(245,158,11,0.06)',
+                  opacity: a.acknowledged ? 0.45 : 1,
+                }}>
+                  <span style={{ color: '#475569' }}>{new Date(a.created_at).toLocaleString('en-GB')}</span>
+                  <span style={{ color: '#94a3b8', fontWeight: 600 }}>{EQUIP_ICONS[a.equipment]} {a.equipment}</span>
+                  <span style={{
+                    display: 'inline-block', padding: '1px 6px', borderRadius: 99, fontSize: 9, fontWeight: 700,
+                    background: a.severity === 'critical' ? '#ef444422' : '#f59e0b22',
+                    color: a.severity === 'critical' ? '#ef4444' : '#f59e0b',
+                  }}>{a.severity.toUpperCase()}</span>
+                  <span style={{ color: '#64748b', fontSize: 9 }}>{a.type === 'lstm_anomaly' ? 'LSTM' : 'LIMIT'}</span>
+                  <span style={{ color: '#e2e8f0' }}>{a.message}</span>
+                  <span>
+                    {a.acknowledged
+                      ? <span style={{ color: '#22c55e', fontSize: 9 }}>✓ acked {a.ack_at ? new Date(a.ack_at).toLocaleTimeString('en-GB') : ''}</span>
+                      : <button onClick={() => ackAlert(a.id)} style={{
+                          fontSize: 9, padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+                          background: '#1e293b', border: '1px solid #334155', color: '#94a3b8',
+                        }}>Acknowledge</button>
+                    }
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* How it works */}
+        <div style={{ background: '#0f1e33', border: '1px solid #1e3a5f', borderRadius: 8, padding: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 10, color: '#3b82f6', textTransform: 'uppercase', marginBottom: 8 }}>
+            How Predictive Maintenance works
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            {[
+              { step: '1', title: 'Data collection', desc: 'Telemetry every 5s → 5-min sliding windows of multivariate signals per equipment' },
+              { step: '2', title: 'LSTM Autoencoder', desc: 'Unsupervised model learns "normal" pattern. High reconstruction error = anomaly' },
+              { step: '3', title: 'Alert & Acknowledge', desc: 'z-score > 2σ = warning, > 3σ = critical. Team acknowledges after inspection' },
+            ].map(({ step, title, desc }) => (
+              <div key={step}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#1e40af', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{step}</div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0' }}>{title}</span>
+                </div>
+                <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5 }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 10, fontSize: 10, color: '#475569', borderTop: '1px solid #1e3a5f', paddingTop: 8 }}>
+            Train: <code style={{ color: '#94a3b8' }}>uv run python ai/predictive/train.py --all</code>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            Run: <code style={{ color: '#94a3b8' }}>uv run python ai/predictive/inference.py</code>
+          </div>
+        </div>
+
+      </div>
+    )
+  }
+
   const renderTab = () => {
     switch (tab) {
+      case 'predictive':  return renderPredictive()
       case 'overview':    return renderOverview()
       case 'combustion':  return renderCombustion()
       case 'boiler':      return renderBoiler()
