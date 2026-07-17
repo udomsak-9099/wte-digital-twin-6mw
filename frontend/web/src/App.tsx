@@ -81,34 +81,67 @@ const LAB_LIMITS: Record<string, Record<string, { max?: number; min?: number; la
   dga:          { C2H2: { max: 1 }, TDCG: { max: 300 }, moisture_ppm: { max: 35 }, BDV_kV: { min: 30 } },
 }
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg0:    '#080c14',   // page
+  bg1:    '#0d1420',   // panel
+  bg2:    '#111927',   // card
+  bg3:    '#16202e',   // row hover / input
+  border: '#1c2a3a',
+  borderStrong: '#243447',
+  text0:  '#e8f0f8',   // primary value
+  text1:  '#8fa8c0',   // label
+  text2:  '#4a6278',   // muted
+  mono:   "'JetBrains Mono','Fira Mono','Courier New',monospace",
+  green:  '#22d36b',
+  amber:  '#f5a623',
+  red:    '#f04040',
+  blue:   '#3d9eff',
+  purple: '#a78bfa',
+  teal:   '#22d3ee',
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
-function KpiCard({ label, value, unit, icon: Icon, color = '#3b82f6', alert = false }: {
+function KpiCard({ label, value, unit, icon: Icon, color = T.blue, alert = false }: {
   label: string; value: string | number; unit: string
   icon: React.ElementType; color?: string; alert?: boolean
 }) {
   return (
     <div style={{
-      background: alert ? '#450a0a' : '#1e293b',
-      border: `1.5px solid ${alert ? '#ef4444' : '#334155'}`,
-      borderRadius: 8, padding: '10px 14px', display: 'flex',
-      flexDirection: 'column', gap: 3, minWidth: 130,
+      background: T.bg2,
+      border: `1px solid ${alert ? T.red + '55' : T.border}`,
+      borderLeft: `3px solid ${alert ? T.red : color}`,
+      borderRadius: 6, padding: '10px 14px',
+      display: 'flex', flexDirection: 'column', gap: 5, minWidth: 130,
+      position: 'relative', overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#94a3b8', fontSize: 10 }}>
-        <Icon size={12} color={color} />{label}
+      {alert && (
+        <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6,
+          borderRadius: '50%', background: T.red, boxShadow: `0 0 6px ${T.red}` }} />
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.text2, fontSize: 9,
+        textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+        <Icon size={11} color={color} />{label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.1 }}>
-        {value}<span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8', marginLeft: 3 }}>{unit}</span>
+      <div style={{ fontFamily: T.mono, fontSize: 22, fontWeight: 700, color: alert ? T.red : color, lineHeight: 1, letterSpacing: '-0.02em' }}>
+        {value}
+        <span style={{ fontFamily: 'inherit', fontSize: 10, fontWeight: 400, color: T.text2, marginLeft: 5 }}>{unit}</span>
       </div>
     </div>
   )
 }
 
-function Section({ title, children, cols = 1 }: { title: string; children: React.ReactNode; cols?: number }) {
+function Section({ title, children, cols = 1, accent = T.blue }: {
+  title: string; children: React.ReactNode; cols?: number; accent?: string
+}) {
   return (
-    <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: 12 }}>
-      <div style={{ fontWeight: 700, fontSize: 10, color: '#64748b', marginBottom: 10,
-        textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</div>
-      <div style={cols > 1 ? { display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '0 24px' } : {}}>
+    <div style={{ background: T.bg1, border: `1px solid ${T.border}`, borderRadius: 6, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 11, paddingBottom: 8,
+        borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ width: 2, height: 12, background: accent, borderRadius: 1 }} />
+        <div style={{ fontSize: 9, fontWeight: 700, color: T.text2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{title}</div>
+      </div>
+      <div style={cols > 1 ? { display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '0 28px' } : {}}>
         {children}
       </div>
     </div>
@@ -122,13 +155,14 @@ function Row({ label, value, unit, alert = false, limit }: {
   const isAlert = alert || (limit != null && v != null && v > limit)
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', padding: '4px 0',
-      borderBottom: '1px solid #1e3a5f22', fontSize: 11,
-      background: isAlert ? 'rgba(239,68,68,0.07)' : 'transparent',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      padding: '4px 0', borderBottom: `1px solid ${T.border}`,
     }}>
-      <span style={{ color: isAlert ? '#fca5a5' : '#94a3b8' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: isAlert ? '#ef4444' : '#e2e8f0' }}>
-        {v != null ? v : '—'} <span style={{ color: '#64748b', fontSize: 9 }}>{unit}</span>
+      <span style={{ fontSize: 10, color: isAlert ? '#f87171' : T.text1 }}>{label}</span>
+      <span style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600,
+        color: isAlert ? T.red : T.text0, letterSpacing: '-0.01em' }}>
+        {v != null ? v : <span style={{ color: T.text2, fontSize: 10 }}>—</span>}
+        {v != null && <span style={{ color: T.text2, fontSize: 9, fontWeight: 400, marginLeft: 4 }}>{unit}</span>}
       </span>
     </div>
   )
@@ -136,39 +170,61 @@ function Row({ label, value, unit, alert = false, limit }: {
 
 function ZoneBar({ label, temp, max = 1000 }: { label: string; temp: number; max?: number }) {
   const pct = Math.min((temp / max) * 100, 100)
-  const color = temp > 900 ? '#ef4444' : temp > 600 ? '#f97316' : temp > 300 ? '#eab308' : '#3b82f6'
+  const color = temp > 900 ? T.red : temp > 600 ? T.amber : temp > 300 ? '#eab308' : T.blue
   return (
-    <div style={{ marginBottom: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10, color: '#94a3b8' }}>
-        <span>{label}</span><span style={{ color, fontWeight: 600 }}>{temp.toFixed(0)} °C</span>
+    <div style={{ marginBottom: 7 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 9 }}>
+        <span style={{ color: T.text2 }}>{label}</span>
+        <span style={{ fontFamily: T.mono, color, fontWeight: 700, fontSize: 10 }}>
+          {temp > 0 ? temp.toFixed(0) : '—'} <span style={{ color: T.text2, fontWeight: 400 }}>°C</span>
+        </span>
       </div>
-      <div style={{ background: '#334155', borderRadius: 3, height: 6 }}>
-        <div style={{ width: `${pct}%`, background: color, height: 6, borderRadius: 3, transition: 'width 1s ease' }} />
+      <div style={{ background: T.bg0, borderRadius: 2, height: 4, overflow: 'hidden' }}>
+        <div style={{
+          width: `${pct}%`, height: 4, borderRadius: 2, transition: 'width 1s ease',
+          background: `linear-gradient(90deg, ${color}88, ${color})`,
+        }} />
       </div>
     </div>
   )
 }
 
-function GaugeBar({ label, value, max, unit, warn, danger, color = '#3b82f6' }: {
+function GaugeBar({ label, value, max, unit, warn, danger, color = T.blue }: {
   label: string; value: number; max: number; unit: string; warn?: number; danger?: number; color?: string
 }) {
   const pct = Math.min((value / max) * 100, 100)
-  const c = danger != null && value > danger ? '#ef4444'
-    : warn != null && value > warn ? '#f97316'
-    : color
+  const c = danger != null && value > danger ? T.red
+    : warn != null && value > warn ? T.amber : color
   return (
-    <div style={{ marginBottom: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10, color: '#94a3b8' }}>
-        <span>{label}</span><span style={{ color: c, fontWeight: 600 }}>{value.toFixed(1)} {unit}</span>
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 9 }}>
+        <span style={{ color: T.text2 }}>{label}</span>
+        <span style={{ fontFamily: T.mono, color: c, fontWeight: 700, fontSize: 10 }}>
+          {value.toFixed(1)} <span style={{ color: T.text2, fontWeight: 400 }}>{unit}</span>
+        </span>
       </div>
-      <div style={{ background: '#334155', borderRadius: 3, height: 6, position: 'relative' }}>
-        <div style={{ width: `${pct}%`, background: c, height: 6, borderRadius: 3, transition: 'width 0.8s ease' }} />
-        {warn != null && <div style={{ position: 'absolute', left: `${(warn / max) * 100}%`, top: 0, height: 6, width: 1.5, background: '#f97316', borderRadius: 1 }} />}
-        {danger != null && <div style={{ position: 'absolute', left: `${(danger / max) * 100}%`, top: 0, height: 6, width: 1.5, background: '#ef4444', borderRadius: 1 }} />}
+      <div style={{ background: T.bg0, borderRadius: 2, height: 5, position: 'relative', overflow: 'visible' }}>
+        <div style={{ width: `${pct}%`, height: 5, borderRadius: 2, transition: 'width 0.8s ease',
+          background: `linear-gradient(90deg, ${c}66, ${c})` }} />
+        {warn != null && (
+          <div style={{ position: 'absolute', left: `${(warn / max) * 100}%`, top: -2, height: 9,
+            width: 1, background: T.amber, opacity: 0.7 }} />
+        )}
+        {danger != null && (
+          <div style={{ position: 'absolute', left: `${(danger / max) * 100}%`, top: -2, height: 9,
+            width: 1, background: T.red, opacity: 0.9 }} />
+        )}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2, fontSize: 8, color: T.text2 }}>
+        <span>0</span>
+        {warn  != null && <span style={{ color: T.amber + 'aa', marginLeft: `${(warn/max*100) - 5}%` }}>{warn}</span>}
+        <span>{max} {unit}</span>
       </div>
     </div>
   )
 }
+
+import { AreaChart, Area } from 'recharts'
 
 function MiniChart({ data, dataKey, color, domain, refVal, unit }: {
   data: PlantTelemetry[]; dataKey: string; color: string; domain: [number, number]; refVal?: number; unit: string
@@ -178,16 +234,28 @@ function MiniChart({ data, dataKey, color, domain, refVal, unit }: {
     v: (h as any)[dataKey],
   }))
   return (
-    <ResponsiveContainer width="100%" height={90}>
-      <LineChart data={cd}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
-        <XAxis dataKey="t" tick={{ fontSize: 8, fill: '#475569' }} interval="preserveStartEnd" />
-        <YAxis domain={domain} tick={{ fontSize: 8, fill: '#475569' }} width={30} />
-        <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', fontSize: 10 }}
-          formatter={(v) => [`${(v as number)?.toFixed?.(2) ?? v} ${unit}`, '']} />
-        {refVal != null && <ReferenceLine y={refVal} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1} />}
-        <Line type="monotone" dataKey="v" stroke={color} dot={false} strokeWidth={1.5} name={dataKey} />
-      </LineChart>
+    <ResponsiveContainer width="100%" height={80}>
+      <AreaChart data={cd} margin={{ top: 4, right: 2, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`g-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="1 4" stroke={T.border} vertical={false} />
+        <XAxis dataKey="t" tick={{ fontSize: 7, fill: T.text2 }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+        <YAxis domain={domain} tick={{ fontSize: 7, fill: T.text2 }} width={28} axisLine={false} tickLine={false} />
+        <Tooltip
+          contentStyle={{ background: T.bg1, border: `1px solid ${T.border}`, borderRadius: 4, fontSize: 9, padding: '4px 8px' }}
+          formatter={(v) => [`${(v as number)?.toFixed?.(2) ?? v} ${unit}`, '']}
+          labelStyle={{ color: T.text2, fontSize: 8 }}
+        />
+        {refVal != null && (
+          <ReferenceLine y={refVal} stroke={T.red} strokeDasharray="2 3" strokeWidth={1} strokeOpacity={0.6} />
+        )}
+        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5}
+          fill={`url(#g-${dataKey})`} dot={false} />
+      </AreaChart>
     </ResponsiveContainer>
   )
 }
@@ -2021,52 +2089,104 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', padding: 14, fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: T.bg0, padding: '12px 16px', fontFamily: 'Inter,system-ui,sans-serif', color: T.text0 }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 17, fontWeight: 800, color: '#e2e8f0', margin: 0 }}>
-            ⚡ WtE Digital Twin <span style={{ color: '#3b82f6' }}>6.6 MW</span>
-          </h1>
-          <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-            Moving Grate · Emerson Ovation DCS · Updated: {lastUpdate}
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 0,
+        background: T.bg1, border: `1px solid ${T.border}`,
+        borderRadius: 6, padding: '8px 14px', marginBottom: 10,
+      }}>
+        {/* plant identity */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+          <div style={{ width: 3, height: 32, background: T.blue, borderRadius: 2 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text0, letterSpacing: '-0.01em', lineHeight: 1 }}>
+              WtE Digital Twin
+              <span style={{ fontFamily: T.mono, color: T.blue, marginLeft: 8, fontSize: 14 }}>6.6 MW</span>
+            </div>
+            <div style={{ fontSize: 9, color: T.text2, marginTop: 3, letterSpacing: '0.05em' }}>
+              MOVING GRATE · EMERSON OVATION DCS · {new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase()}
+            </div>
           </div>
         </div>
+
+        {/* live KPIs in header */}
+        {[
+          { label: 'GEN', val: d?.gen_mw?.toFixed(2), unit: 'MW', color: T.green, alert: (d?.gen_mw ?? 0) < 5.5 },
+          { label: 'NET', val: d?.net_mw?.toFixed(2),  unit: 'MW', color: T.teal },
+          { label: 'NOₓ', val: d?.scr_nox_out?.toFixed(0), unit: 'mg/Nm³', color: (d?.scr_nox_out ?? 0) > 180 ? T.red : T.green, alert: (d?.scr_nox_out ?? 0) > 180 },
+          { label: 'PM',  val: d?.pm_cems?.toFixed(1), unit: 'mg/Nm³', color: (d?.pm_cems ?? 0) > 16 ? T.amber : T.green },
+        ].map(({ label, val, unit, color, alert }) => (
+          <div key={label} style={{
+            padding: '0 16px', borderLeft: `1px solid ${T.border}`,
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            <div style={{ fontSize: 8, color: T.text2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+            <div style={{ fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: alert ? T.red : color, lineHeight: 1 }}>
+              {val ?? <span style={{ color: T.text2, fontSize: 11 }}>—</span>}
+              <span style={{ fontSize: 8, color: T.text2, fontWeight: 400, marginLeft: 3 }}>{unit}</span>
+            </div>
+          </div>
+        ))}
+
+        {/* status pill */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          background: connected ? '#052e16' : '#1c1917',
-          border: `1px solid ${connected ? '#22c55e' : '#44403c'}`,
-          borderRadius: 20, padding: '3px 10px', fontSize: 10,
-          color: connected ? '#22c55e' : '#78716c',
+          marginLeft: 14, display: 'flex', alignItems: 'center', gap: 6,
+          background: connected ? T.green + '12' : T.bg3,
+          border: `1px solid ${connected ? T.green + '44' : T.border}`,
+          borderRadius: 4, padding: '5px 12px',
         }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#22c55e' : '#78716c' }} />
-          {connected ? 'LIVE' : 'NO DATA'}
+          <div style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: connected ? T.green : T.text2,
+            boxShadow: connected ? `0 0 8px ${T.green}` : 'none',
+          }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: connected ? T.green : T.text2, letterSpacing: '0.1em' }}>
+            {connected ? 'LIVE' : 'NO DATA'}
+          </span>
+          <span style={{ fontSize: 8, color: T.text2, borderLeft: `1px solid ${T.border}`, paddingLeft: 6 }}>
+            {lastUpdate}
+          </span>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 12, borderBottom: '1px solid #1e293b', paddingBottom: 0 }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)} style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            background: tab === id ? '#1e40af' : 'transparent',
-            border: 'none', borderRadius: '6px 6px 0 0',
-            padding: '5px 10px', cursor: 'pointer', fontSize: 11, fontWeight: tab === id ? 700 : 400,
-            color: tab === id ? '#fff' : '#64748b',
-            borderBottom: tab === id ? '2px solid #3b82f6' : '2px solid transparent',
-            transition: 'all 0.15s',
-          }}>
-            <Icon size={12} />{label}
-          </button>
-        ))}
+      {/* ── Tab bar ── */}
+      <div style={{
+        display: 'flex', gap: 1, marginBottom: 10, overflowX: 'auto',
+        background: T.bg1, border: `1px solid ${T.border}`, borderRadius: 6, padding: 3,
+      }}>
+        {TABS.map(({ id, label, icon: Icon }) => {
+          const active = tab === id
+          return (
+            <button key={id} onClick={() => setTab(id)} style={{
+              display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
+              background: active ? T.bg3 : 'transparent',
+              border: active ? `1px solid ${T.borderStrong}` : '1px solid transparent',
+              borderRadius: 4, padding: '5px 11px', cursor: 'pointer',
+              fontSize: 10, fontWeight: active ? 600 : 400,
+              color: active ? T.text0 : T.text2,
+              transition: 'all 0.12s',
+              position: 'relative',
+            }}>
+              {active && (
+                <div style={{ position: 'absolute', bottom: 0, left: '20%', right: '20%',
+                  height: 2, background: T.blue, borderRadius: '2px 2px 0 0' }} />
+              )}
+              <Icon size={11} color={active ? T.blue : T.text2} />
+              {label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Tab content */}
-      {renderTab()}
+      {/* ── Tab content ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {renderTab()}
+      </div>
 
-      <div style={{ textAlign: 'center', color: '#334155', fontSize: 9, marginTop: 10 }}>
-        WtE Digital Twin v0.2 · MATLAB R2026a · Emerson Ovation OPC-UA · Supabase Realtime · Thailand PCD MSWI Standard
+      <div style={{ textAlign: 'center', color: T.text2, fontSize: 8, marginTop: 12, letterSpacing: '0.06em' }}>
+        WTE DIGITAL TWIN v0.2 · MATLAB R2026a · EMERSON OVATION OPC-UA · SUPABASE REALTIME · THAILAND PCD MSWI STD. 2566
       </div>
     </div>
   )
