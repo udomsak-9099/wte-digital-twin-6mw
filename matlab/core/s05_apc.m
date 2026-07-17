@@ -28,11 +28,12 @@ apc.scrubber.SO2_out_mgNm3  = apc.scrubber.SO2_in_mgNm3  * (1 - apc.scrubber.SO2
 apc.scrubber.HCl_out_mgNm3  = apc.scrubber.HCl_in_mgNm3  * (1 - apc.scrubber.HCl_removal);
 apc.scrubber.NaOH_kgh       = 50;  % NaOH consumption estimate
 
-% Compliance check (Thailand MSWI emission standard)
+% Compliance check — Thailand MSWI emission standard (Pollution Control Dept.)
+% Ref: Notification of Ministry of Natural Resources No. 2 (2553 BE)
 limits.particulate = 20;   % mg/Nm³
 limits.NOx         = 200;
 limits.SO2         = 50;
-limits.HCl         = 10;
+limits.HCl         = 50;   % Thai standard 50 mg/Nm³ (EU IED = 10 — stricter)
 
 apc.compliance.particulate = apc.bag.particulate_out_mgNm3  <= limits.particulate;
 apc.compliance.NOx         = apc.scr.NOx_out_mgNm3          <= limits.NOx;
