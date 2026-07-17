@@ -525,16 +525,126 @@ export default function App() {
 
         {/* Combustion Air Control */}
         <Section title="Combustion Air Control">
-          <Row label="O₂ in Furnace"      value={d?.o2_furnace}    unit="%" />
+          {/* ── Excess Air Meter ── */}
+          {(() => {
+            const o2 = d?.o2_furnace
+            const ea = (o2 != null && o2 < 21) ? (o2 / (21 - o2)) * 100 : null
+            // WtE optimal: 80–120 % EA (O₂ ≈ 8–10 %)
+            const status = ea == null ? 'no-data'
+              : ea < 60  ? 'lean'     // under-air → CO, incomplete combustion
+              : ea < 80  ? 'low'      // slightly low
+              : ea > 150 ? 'rich'     // over-air → heat loss, NOx rise
+              : ea > 120 ? 'high'     // slightly high
+              : 'optimal'
+            const statusColor: Record<string, string> = {
+              'lean':    '#ef4444',
+              'low':     '#f59e0b',
+              'optimal': '#22c55e',
+              'high':    '#f59e0b',
+              'rich':    '#ef4444',
+              'no-data': '#334155',
+            }
+            const statusLabel: Record<string, string> = {
+              'lean':    'UNDER-AIR ⚠ CO risk',
+              'low':     'SLIGHTLY LOW',
+              'optimal': 'OPTIMAL',
+              'high':    'SLIGHTLY HIGH',
+              'rich':    'OVER-AIR ⚠ Heat loss',
+              'no-data': 'NO DATA',
+            }
+            const col = statusColor[status]
+            // arc parameters (SVG semicircle gauge 0–200%)
+            const MAX_EA = 200
+            const pct = ea != null ? Math.min(ea / MAX_EA, 1) : 0
+            const R = 52, CX = 70, CY = 68
+            const angle = pct * 180  // 0° = left, 180° = right
+            const rad   = (angle - 180) * (Math.PI / 180)
+            const nx    = CX + R * Math.cos(rad)
+            const ny    = CY + R * Math.sin(rad)
+            const arcPath = (from: number, to: number, color: string, width = 8) => {
+              const a1 = (from / MAX_EA * 180 - 180) * Math.PI / 180
+              const a2 = (to   / MAX_EA * 180 - 180) * Math.PI / 180
+              const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1)
+              const x2 = CX + R * Math.cos(a2), y2 = CY + R * Math.sin(a2)
+              const large = (to - from) / MAX_EA > 0.5 ? 1 : 0
+              return <path d={`M${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2}`}
+                fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" />
+            }
+            return (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>
+                  Excess Air Meter
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  {/* SVG arc gauge */}
+                  <svg width={140} height={78} style={{ flexShrink: 0 }}>
+                    {/* background arc */}
+                    {arcPath(0, MAX_EA, '#1e293b', 10)}
+                    {/* zone arcs */}
+                    {arcPath(0,   60,  '#ef444466', 10)}
+                    {arcPath(60,  80,  '#f59e0b44', 10)}
+                    {arcPath(80,  120, '#22c55e44', 10)}
+                    {arcPath(120, 150, '#f59e0b44', 10)}
+                    {arcPath(150, MAX_EA, '#ef444444', 10)}
+                    {/* filled progress */}
+                    {ea != null && arcPath(0, ea, col, 8)}
+                    {/* needle */}
+                    {ea != null && (
+                      <line x1={CX} y1={CY} x2={nx} y2={ny}
+                        stroke={col} strokeWidth={2} strokeLinecap="round" />
+                    )}
+                    <circle cx={CX} cy={CY} r={4} fill={col} />
+                    {/* labels */}
+                    <text x={12} y={CY + 14} fontSize={8} fill="#475569">0%</text>
+                    <text x={CX - 5} y={18} fontSize={8} fill="#22c55e">100%</text>
+                    <text x={116} y={CY + 14} fontSize={8} fill="#475569">200%</text>
+                    {/* tick marks */}
+                    {[60, 80, 120, 150].map(v => {
+                      const a = (v / MAX_EA * 180 - 180) * Math.PI / 180
+                      const ix = CX + (R - 6) * Math.cos(a), iy = CY + (R - 6) * Math.sin(a)
+                      const ox = CX + (R + 4) * Math.cos(a), oy = CY + (R + 4) * Math.sin(a)
+                      return <line key={v} x1={ix} y1={iy} x2={ox} y2={oy} stroke="#334155" strokeWidth={1} />
+                    })}
+                    {/* value text */}
+                    <text x={CX} y={CY + 4} textAnchor="middle" fontSize={16} fontWeight="bold" fill={col}>
+                      {ea != null ? ea.toFixed(0) : '—'}
+                    </text>
+                    <text x={CX} y={CY + 16} textAnchor="middle" fontSize={8} fill="#64748b">%EA</text>
+                  </svg>
+                  {/* right panel */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+                      background: col + '22', color: col, border: `1px solid ${col}55`, marginBottom: 8 }}>
+                      {statusLabel[status]}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#64748b', lineHeight: 1.7 }}>
+                      <div>O₂ measured = <span style={{ color: '#e2e8f0' }}>{o2?.toFixed(1) ?? '—'} %</span></div>
+                      <div>EA = O₂ / (21 − O₂) × 100</div>
+                      <div style={{ color: '#334155' }}>Optimal range: 80–120 % (O₂ 8–10 %)</div>
+                    </div>
+                    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 9 }}>
+                      <div style={{ color: '#ef4444' }}>■ &lt;60%  Under-air</div>
+                      <div style={{ color: '#f59e0b' }}>■ 60–80%  Low</div>
+                      <div style={{ color: '#22c55e' }}>■ 80–120% Optimal</div>
+                      <div style={{ color: '#f59e0b' }}>■ 120–150% High</div>
+                      <div style={{ color: '#ef4444' }}>■ &gt;150% Over-air</div>
+                    </div>
+                  </div>
+                </div>
+                {/* O₂ trend */}
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>O₂ furnace — last 5 min (%)</div>
+                  <MiniChart data={history} dataKey="o2_furnace" color="#a78bfa" domain={[6, 12]} refVal={9} unit="%" />
+                </div>
+              </div>
+            )
+          })()}
           <Row label="Total Primary Air"  value={d?.pa_flow_total} unit="Nm³/h" />
           <Row label="PA Zone 1 (15%)"    value={d?.pa_flow_z1}    unit="Nm³/h" />
           <Row label="PA Zone 2 (20%)"    value={d?.pa_flow_z2}    unit="Nm³/h" />
           <Row label="PA Zone 3 (45%)"    value={d?.pa_flow_z3}    unit="Nm³/h" />
           <Row label="PA Zone 4 (20%)"    value={d?.pa_flow_z4}    unit="Nm³/h" />
           <Row label="Secondary Air Flow" value={d?.sa_flow}        unit="Nm³/h" />
-          <div style={{ marginTop: 12 }}>
-            <MiniChart data={history} dataKey="o2_furnace" color="#a78bfa" domain={[6, 12]} unit="%" />
-          </div>
         </Section>
       </div>
     )
