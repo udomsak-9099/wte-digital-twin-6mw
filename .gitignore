@@ -1,9 +1,17 @@
-# Environment
+# ── Environment / Secrets ─────────────────────────────────────────────────────
 .env
 .env.local
 .env.*.local
+*.env
+config/.env
+config/secrets/
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
 
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 .venv/
 __pycache__/
 *.pyc
@@ -15,7 +23,7 @@ build/
 .mypy_cache/
 .ruff_cache/
 
-# MATLAB
+# ── MATLAB ────────────────────────────────────────────────────────────────────
 *.asv
 *.mex*
 slprj/
@@ -23,27 +31,25 @@ matlab/data/calibration/*.mat
 matlab/data/historical/*.mat
 matlab/data/input/plant_*.mat
 
-# Node / Frontend
+# ── Node / Frontend ───────────────────────────────────────────────────────────
 node_modules/
 frontend/web/dist/
 frontend/web/.next/
 frontend/mobile/.expo/
 frontend/mobile/dist/
 
-# Supabase
+# ── Supabase ──────────────────────────────────────────────────────────────────
 .supabase/
+supabase/.temp/
 
-# OS
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
 
-# Secrets / Credentials
-config/secrets/
-*.pem
-*.key
-*.cert
-
-# Large files (use Git LFS or Supabase Storage)
+# ── Large files (use Git LFS or Supabase Storage) ─────────────────────────────
 *.h5
 *.pkl
 *.onnx
+*.mat
