@@ -1,0 +1,49 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# MATLAB
+*.asv
+*.mex*
+slprj/
+matlab/data/calibration/*.mat
+matlab/data/historical/*.mat
+matlab/data/input/plant_*.mat
+
+# Node / Frontend
+node_modules/
+frontend/web/dist/
+frontend/web/.next/
+frontend/mobile/.expo/
+frontend/mobile/dist/
+
+# Supabase
+.supabase/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / Credentials
+config/secrets/
+*.pem
+*.key
+*.cert
+
+# Large files (use Git LFS or Supabase Storage)
+*.h5
+*.pkl
+*.onnx

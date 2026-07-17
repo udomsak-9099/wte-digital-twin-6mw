@@ -1,0 +1,148 @@
+# Ovation DCS OPC-UA Tag Mapping
+# Endpoint: opc.tcp://<OVATION_SERVER_IP>:4840
+# Fill in actual node IDs from Ovation Engineering Workstation
+
+server:
+  host: 192.168.1.100   # FILL IN — Ovation OPC-UA server IP
+  port: 4840
+  namespace: 2          # Ovation default namespace index
+
+tags:
+  # --- Grate Control ---
+  - alias: GRATE_SPEED
+    node_id: "ns=2;s=Plant.GrateControl.Speed"
+    unit: m/h
+    description: Moving grate belt speed
+    scan_rate_ms: 5000
+
+  - alias: BED_DEPTH
+    node_id: "ns=2;s=Plant.GrateControl.BedDepth"
+    unit: mm
+    description: Refuse bed depth on grate
+
+  - alias: BED_TEMP_Z1
+    node_id: "ns=2;s=Plant.Grate.Zone1.Temperature"
+    unit: degC
+    description: Zone 1 (Drying) temperature
+
+  - alias: BED_TEMP_Z2
+    node_id: "ns=2;s=Plant.Grate.Zone2.Temperature"
+    unit: degC
+    description: Zone 2 (Devolatilization) temperature
+
+  - alias: BED_TEMP_Z3
+    node_id: "ns=2;s=Plant.Grate.Zone3.Temperature"
+    unit: degC
+    description: Zone 3 (Combustion) temperature — peak
+
+  - alias: BED_TEMP_Z4
+    node_id: "ns=2;s=Plant.Grate.Zone4.Temperature"
+    unit: degC
+    description: Zone 4 (Burnout) temperature
+
+  # --- Combustion Air ---
+  - alias: PA_FLOW_TOTAL
+    node_id: "ns=2;s=Plant.CombAir.Primary.TotalFlow"
+    unit: Nm3/h
+    description: Total primary air flow (undergrate)
+
+  - alias: PA_FLOW_Z1
+    node_id: "ns=2;s=Plant.CombAir.Primary.Zone1.Flow"
+    unit: Nm3/h
+
+  - alias: PA_FLOW_Z2
+    node_id: "ns=2;s=Plant.CombAir.Primary.Zone2.Flow"
+    unit: Nm3/h
+
+  - alias: PA_FLOW_Z3
+    node_id: "ns=2;s=Plant.CombAir.Primary.Zone3.Flow"
+    unit: Nm3/h
+
+  - alias: PA_FLOW_Z4
+    node_id: "ns=2;s=Plant.CombAir.Primary.Zone4.Flow"
+    unit: Nm3/h
+
+  - alias: SA_FLOW
+    node_id: "ns=2;s=Plant.CombAir.Secondary.Flow"
+    unit: Nm3/h
+    description: Secondary air (overfire)
+
+  - alias: O2_FURNACE
+    node_id: "ns=2;s=Plant.Furnace.O2.Analyzer"
+    unit: vol%
+    description: Residual O2 in furnace (combustion control)
+
+  # --- Boiler / Steam ---
+  - alias: STEAM_PRESS
+    node_id: "ns=2;s=Plant.Boiler.SteamPressure"
+    unit: bar
+    scan_rate_ms: 1000
+
+  - alias: STEAM_TEMP
+    node_id: "ns=2;s=Plant.Boiler.SteamTemp"
+    unit: degC
+    scan_rate_ms: 1000
+
+  - alias: STEAM_FLOW
+    node_id: "ns=2;s=Plant.Boiler.SteamFlow"
+    unit: t/h
+    scan_rate_ms: 1000
+
+  - alias: FGT_FURNACE
+    node_id: "ns=2;s=Plant.Furnace.Temperature.Exit"
+    unit: degC
+    description: Furnace exit (above grate)
+
+  - alias: FGT_OUT
+    node_id: "ns=2;s=Plant.Boiler.FluegasTemp.Outlet"
+    unit: degC
+    description: Economizer flue gas outlet
+
+  # --- Generator ---
+  - alias: GEN_MW
+    node_id: "ns=2;s=Plant.Generator.ActivePower"
+    unit: MW
+    scan_rate_ms: 1000
+
+  - alias: GEN_MVAR
+    node_id: "ns=2;s=Plant.Generator.ReactivePower"
+    unit: MVAR
+
+  - alias: GEN_FREQ
+    node_id: "ns=2;s=Plant.Generator.Frequency"
+    unit: Hz
+
+  # --- APC ---
+  - alias: BAG_DP
+    node_id: "ns=2;s=Plant.APC.BagFilter.DeltaP"
+    unit: mbar
+    description: Bag filter differential pressure
+
+  - alias: SCR_TEMP
+    node_id: "ns=2;s=Plant.APC.SCR.Temperature"
+    unit: degC
+
+  - alias: SCR_NOX_IN
+    node_id: "ns=2;s=Plant.APC.SCR.NOx.Inlet"
+    unit: mg/Nm3
+
+  - alias: SCR_NOX_OUT
+    node_id: "ns=2;s=Plant.APC.SCR.NOx.Outlet"
+    unit: mg/Nm3
+
+  - alias: SCRUBBER_PH
+    node_id: "ns=2;s=Plant.APC.Scrubber.pH"
+    unit: pH
+
+  # --- Wastewater ---
+  - alias: WW_LEACHATE_FLOW
+    node_id: "ns=2;s=Plant.WW.Leachate.Flow"
+    unit: m3/h
+
+  - alias: WW_MBR_PERM_FLOW
+    node_id: "ns=2;s=Plant.WW.MBR.Permeate.Flow"
+    unit: m3/h
+
+  - alias: WW_RO_RECOVERY
+    node_id: "ns=2;s=Plant.WW.RO.Recovery"
+    unit: percent
