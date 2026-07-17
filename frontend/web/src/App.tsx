@@ -650,29 +650,134 @@ export default function App() {
     )
   }
 
-  const renderBoiler = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-      <Section title="Boiler Drum & Feedwater">
-        <Row label="Drum Level (NWL deviation)" value={d?.drum_level} unit="mm" alert={Math.abs(d?.drum_level ?? 0) > 50} />
-        <Row label="Feedwater Flow" value={d?.fw_flow} unit="t/h" />
-        <Row label="Feedwater Inlet Temp" value={d?.fw_temp} unit="°C" />
-        <Row label="Economizer Outlet Water Temp" value={d?.eco_out_temp} unit="°C" />
-        <Row label="Attemperator Spray Flow" value={d?.attemp_spray_flow} unit="t/h" />
-        <div style={{ marginTop: 12 }}>
-          <MiniChart data={history} dataKey="drum_level" color="#3b82f6" domain={[-80, 80]} refVal={50} unit="mm" />
-        </div>
-      </Section>
-      <Section title="Steam Output">
-        <Row label="Steam Pressure" value={d?.steam_press} unit="bar" />
-        <Row label="Steam Temperature" value={d?.steam_temp} unit="°C" />
-        <Row label="Steam Flow" value={d?.steam_flow} unit="t/h" />
-        <Row label="FG Temp (Econ. exit)" value={d?.fgt_out} unit="°C" />
-        <div style={{ marginTop: 12 }}>
-          <MiniChart data={history} dataKey="steam_press" color="#22c55e" domain={[35, 43]} unit="bar" />
-        </div>
-      </Section>
-    </div>
-  )
+  const renderBoiler = () => {
+    // T_sat approx from Antoine-style fit for water (valid 10–60 bar):
+    // T_sat(P) ≈ 155.8 × P^0.225  [°C, P in bar]
+    const P   = d?.steam_press ?? 0
+    const T   = d?.steam_temp  ?? 0
+    const tSat = P > 0 ? 155.8 * Math.pow(P, 0.225) : null
+    const dSH  = (tSat != null && T > 0) ? T - tSat : null  // degrees of superheat
+
+    // Design point for this plant: 40 bar / 400°C → dSH_design ≈ 150°C
+    const DSH_TARGET = 150   // °C
+    const DSH_WARN_LO = 100  // too little superheat → wetness risk
+    const DSH_WARN_HI = 175  // too high → attemperator issue
+
+    const shStatus = dSH == null ? 'no-data'
+      : dSH < DSH_WARN_LO  ? 'low'
+      : dSH > DSH_WARN_HI  ? 'high'
+      : 'normal'
+
+    const shColor: Record<string, string> = {
+      low:     '#ef4444',
+      normal:  '#22c55e',
+      high:    '#f59e0b',
+      'no-data': '#334155',
+    }
+    const shLabel: Record<string, string> = {
+      low:     'LOW ⚠ Wetness risk',
+      normal:  'NORMAL',
+      high:    'HIGH — check attemperation',
+      'no-data': 'NO DATA',
+    }
+    const col = shColor[shStatus]
+
+    // SVG vertical thermometer gauge
+    const DSH_MAX  = 200   // display range 0–200°C
+    const BAR_H    = 110
+    const fillH    = dSH != null ? Math.min(dSH / DSH_MAX, 1) * BAR_H : 0
+    const targetY  = (1 - DSH_TARGET / DSH_MAX) * BAR_H
+
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Section title="Boiler Drum & Feedwater">
+          <Row label="Drum Level (NWL deviation)" value={d?.drum_level} unit="mm" alert={Math.abs(d?.drum_level ?? 0) > 50} />
+          <Row label="Feedwater Flow" value={d?.fw_flow} unit="t/h" />
+          <Row label="Feedwater Inlet Temp" value={d?.fw_temp} unit="°C" />
+          <Row label="Economizer Outlet Water Temp" value={d?.eco_out_temp} unit="°C" />
+          <Row label="Attemperator Spray Flow" value={d?.attemp_spray_flow} unit="t/h" />
+          <div style={{ marginTop: 12 }}>
+            <MiniChart data={history} dataKey="drum_level" color="#3b82f6" domain={[-80, 80]} refVal={50} unit="mm" />
+          </div>
+        </Section>
+
+        <Section title="Steam Output">
+          {/* ── Superheat Meter ── */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>
+              Superheat Meter
+            </div>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+
+              {/* vertical thermometer */}
+              <svg width={44} height={BAR_H + 28} style={{ flexShrink: 0 }}>
+                {/* track */}
+                <rect x={16} y={0} width={12} height={BAR_H} rx={6} fill="#1e293b" />
+                {/* zone fills */}
+                <clipPath id="thermo-clip">
+                  <rect x={16} y={0} width={12} height={BAR_H} rx={6} />
+                </clipPath>
+                <g clipPath="url(#thermo-clip)">
+                  {/* low zone 0–100°C */}
+                  <rect x={16} y={BAR_H * (1 - 100/DSH_MAX)} width={12} height={BAR_H * (100/DSH_MAX)} fill="#ef444422" />
+                  {/* normal 100–175°C */}
+                  <rect x={16} y={BAR_H * (1 - 175/DSH_MAX)} width={12} height={BAR_H * (75/DSH_MAX)}  fill="#22c55e22" />
+                  {/* high >175°C */}
+                  <rect x={16} y={0} width={12} height={BAR_H * (25/DSH_MAX)} fill="#f59e0b22" />
+                  {/* fill bar */}
+                  {dSH != null && (
+                    <rect x={16} y={BAR_H - fillH} width={12} height={fillH} fill={col} rx={4} />
+                  )}
+                </g>
+                {/* target line */}
+                <line x1={12} y1={targetY} x2={32} y2={targetY} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="2 2" />
+                {/* bulb */}
+                <circle cx={22} cy={BAR_H + 10} r={9} fill={col} />
+                <text x={22} y={BAR_H + 14} textAnchor="middle" fontSize={7} fill="#000" fontWeight="bold">
+                  {dSH != null ? dSH.toFixed(0) : '—'}
+                </text>
+                {/* scale labels */}
+                <text x={32} y={4}              fontSize={7} fill="#475569">200</text>
+                <text x={32} y={targetY + 3}    fontSize={7} fill="#22c55e">150</text>
+                <text x={32} y={BAR_H * (1 - 100/DSH_MAX) + 4} fontSize={7} fill="#ef4444">100</text>
+                <text x={32} y={BAR_H + 4}      fontSize={7} fill="#334155">0</text>
+              </svg>
+
+              {/* right info */}
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+                  background: col + '22', color: col, border: `1px solid ${col}55`, marginBottom: 8 }}>
+                  {shLabel[shStatus]}
+                </div>
+                <div style={{ fontSize: 9, color: '#64748b', lineHeight: 1.9 }}>
+                  <div>ΔT_SH = T_steam − T_sat(P)</div>
+                  <div>T_steam = <span style={{ color: '#e2e8f0' }}>{T > 0 ? T.toFixed(1) : '—'} °C</span></div>
+                  <div>T_sat({P > 0 ? P.toFixed(1) : '—'} bar) = <span style={{ color: '#60a5fa' }}>{tSat?.toFixed(1) ?? '—'} °C</span></div>
+                  <div>ΔT_SH = <span style={{ color: col, fontWeight: 700 }}>{dSH?.toFixed(1) ?? '—'} °C</span></div>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 9, color: '#334155', lineHeight: 1.6 }}>
+                  <span style={{ color: '#ef4444' }}>■</span> &lt;100°C low risk<br />
+                  <span style={{ color: '#22c55e' }}>■</span> 100–175°C optimal<br />
+                  <span style={{ color: '#f59e0b' }}>■</span> &gt;175°C check attemperation
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Row label="Steam Pressure" value={d?.steam_press} unit="bar" />
+          <Row label="Steam Temperature" value={d?.steam_temp} unit="°C" />
+          <Row label="T_sat (calc.)" value={tSat ? +tSat.toFixed(1) : null} unit="°C" />
+          <Row label="ΔT Superheat" value={dSH ? +dSH.toFixed(1) : null} unit="°C"
+            alert={dSH != null && (dSH < DSH_WARN_LO || dSH > DSH_WARN_HI)} />
+          <Row label="Steam Flow" value={d?.steam_flow} unit="t/h" />
+          <Row label="FG Temp (Econ. exit)" value={d?.fgt_out} unit="°C" />
+          <div style={{ marginTop: 12 }}>
+            <MiniChart data={history} dataKey="steam_temp" color="#f97316" domain={[360, 420]} refVal={400} unit="°C" />
+          </div>
+        </Section>
+      </div>
+    )
+  }
 
   const renderTurbine = () => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
