@@ -63,6 +63,11 @@ class HealthResponse(BaseModel):
     timestamp: str
     supabase: str
     matlab: str
+    bridge_mode: str
+    bridge_connected: bool
+    bridge_last_insert: str | None
+    bridge_rows_inserted: int
+    bridge_error: str | None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -167,11 +172,30 @@ async def health():
 
     matlab_ok = await asyncio.get_event_loop().run_in_executor(None, _check_matlab)
 
+    try:
+        from opcua.bridge.base_poller import STATUS as BRIDGE_STATUS
+        bridge_mode = BRIDGE_STATUS.mode
+        bridge_connected = BRIDGE_STATUS.connected
+        bridge_last_insert = BRIDGE_STATUS.last_insert
+        bridge_rows = BRIDGE_STATUS.rows_inserted
+        bridge_error = BRIDGE_STATUS.error
+    except Exception:
+        bridge_mode = os.environ.get("BRIDGE_MODE", "mock")
+        bridge_connected = False
+        bridge_last_insert = None
+        bridge_rows = 0
+        bridge_error = "bridge not running in same process"
+
     return HealthResponse(
         status="ok",
         timestamp=datetime.now(timezone.utc).isoformat(),
         supabase=db_status,
         matlab="ok" if matlab_ok else "unavailable (mock mode)",
+        bridge_mode=bridge_mode,
+        bridge_connected=bridge_connected,
+        bridge_last_insert=bridge_last_insert,
+        bridge_rows_inserted=bridge_rows,
+        bridge_error=bridge_error,
     )
 
 
