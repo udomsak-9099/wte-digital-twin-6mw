@@ -269,70 +269,154 @@ export default function App() {
   const d = latest as any
 
   // ── Tab content renderers ─────────────────────────────────────────────────
-  const renderOverview = () => (
-    <>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        <KpiCard label="Power Output (Gross)" value={d?.gen_mw?.toFixed(2) ?? '—'} unit="MW" icon={Zap} color="#22c55e" alert={d?.gen_mw < 5.5} />
-        <KpiCard label="Net Export" value={d?.net_mw?.toFixed(2) ?? '—'} unit="MW" icon={Zap} color="#4ade80" />
-        <KpiCard label="MSW Feed Rate" value={d?.waste_feed_rate?.toFixed(2) ?? '—'} unit="t/h" icon={Flame} color="#f97316" />
-        <KpiCard label="Fuel LHV" value={latestFuel?.data?.LHV_kcal_kg ?? '—'} unit="kcal/kg" icon={Flame} color={Number(latestFuel?.data?.LHV_kcal_kg) < 1500 ? '#ef4444' : '#f59e0b'} alert={Number(latestFuel?.data?.LHV_kcal_kg) < 1500} />
-        <KpiCard label="Moisture" value={latestFuel?.data?.moisture_pct ?? '—'} unit="%" icon={Droplets} color={Number(latestFuel?.data?.moisture_pct) > 50 ? '#ef4444' : '#3b82f6'} alert={Number(latestFuel?.data?.moisture_pct) > 50} />
-        <KpiCard label="Steam Pressure" value={d?.steam_press?.toFixed(1) ?? '—'} unit="bar" icon={Activity} color="#3b82f6" />
-        <KpiCard label="Steam Temp" value={d?.steam_temp?.toFixed(0) ?? '—'} unit="°C" icon={Thermometer} color="#f97316" />
-        <KpiCard label="O₂ Furnace" value={d?.o2_furnace?.toFixed(1) ?? '—'} unit="%" icon={Wind} color="#a78bfa" />
-        <KpiCard label="NOx Out (SCR)" value={d?.scr_nox_out?.toFixed(0) ?? '—'} unit="mg/Nm³" icon={Wind}
-          color={d?.scr_nox_out > 180 ? '#ef4444' : '#22c55e'} alert={d?.scr_nox_out > 180} />
-        <KpiCard label="Cycle Efficiency" value={d?.dt_cycle_eff_pct?.toFixed(1) ?? '—'} unit="%" icon={Activity} color="#eab308" />
-        <KpiCard label="RO Recovery" value={d?.ww_ro_recovery?.toFixed(1) ?? '—'} unit="%" icon={Droplets} color="#06b6d4" />
-        <div style={{
-          background: '#1e293b', border: `1.5px solid ${d?.dt_apc_pass ? '#22c55e' : '#ef4444'}`,
-          borderRadius: 8, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 110,
-        }}>
-          <div style={{ fontSize: 10, color: '#94a3b8' }}>APC Compliance</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 700 }}>
-            {d?.dt_apc_pass ? <><CheckCircle size={16} color="#22c55e" /><span style={{ color: '#22c55e' }}>PASS</span></>
-              : <><XCircle size={16} color="#ef4444" /><span style={{ color: '#ef4444' }}>FAIL</span></>}
+  const renderOverview = () => {
+    const apcPass = d?.dt_apc_pass
+    const emBadge = (val: number | null | undefined, limit: number, label: string, unit: string) => {
+      const pct = val != null ? Math.min((val / limit) * 100, 100) : 0
+      const over = val != null && val > limit * 0.9
+      const crit = val != null && val > limit
+      const color = crit ? '#ef4444' : over ? '#f59e0b' : '#22c55e'
+      return (
+        <div key={label} style={{ background: '#0f172a', border: `1px solid ${color}33`, borderRadius: 6, padding: '8px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+            <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>{label}</span>
+            <span style={{ fontSize: 9, color: '#475569' }}>limit {limit} {unit}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
+            <span style={{ fontSize: 20, fontWeight: 700, color }}>{val != null ? val.toFixed(1) : '\u2014'}</span>
+            <span style={{ fontSize: 9, color: '#64748b' }}>{unit}</span>
+          </div>
+          <div style={{ height: 4, background: '#1e293b', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.5s' }} />
           </div>
         </div>
-      </div>
+      )
+    }
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        <Section title="Moving Grate — Zone Temps">
-          <ZoneBar label="Zone 1 — Drying" temp={d?.bed_temp_z1 ?? 0} />
-          <ZoneBar label="Zone 2 — Devolatilization" temp={d?.bed_temp_z2 ?? 0} />
-          <ZoneBar label="Zone 3 — Combustion" temp={d?.bed_temp_z3 ?? 0} />
-          <ZoneBar label="Zone 4 — Burnout" temp={d?.bed_temp_z4 ?? 0} />
-          <Row label="Grate Speed" value={d?.grate_speed} unit="m/h" />
-          <Row label="FG Temp (Econ. out)" value={d?.fgt_out} unit="°C" />
-        </Section>
-        <Section title="Boiler / Steam Cycle">
-          <Row label="Steam Pressure" value={d?.steam_press} unit="bar" />
-          <Row label="Steam Temperature" value={d?.steam_temp} unit="°C" />
-          <Row label="Steam Flow" value={d?.steam_flow} unit="t/h" />
-          <Row label="Drum Level" value={d?.drum_level} unit="mm" />
-          <Row label="Feedwater Flow" value={d?.fw_flow} unit="t/h" />
-          <Row label="Condenser Pressure" value={d?.condenser_press} unit="mbar" />
-        </Section>
-        <Section title="APC + CEMS">
-          <GaugeBar label="PM @ Stack" value={d?.pm_cems ?? 0} max={20} unit="mg/Nm³" warn={16} danger={20} />
-          <GaugeBar label="SO₂ @ Stack" value={d?.so2_cems ?? 0} max={50} unit="mg/Nm³" warn={40} danger={50} />
-          <GaugeBar label="HCl @ Stack" value={d?.hcl_cems ?? 0} max={50} unit="mg/Nm³" warn={40} danger={50} />
-          <GaugeBar label="CO @ Stack" value={d?.co_cems ?? 0} max={100} unit="mg/Nm³" warn={80} danger={100} color="#a78bfa" />
-          <GaugeBar label="NOx (SCR out)" value={d?.scr_nox_out ?? 0} max={200} unit="mg/Nm³" warn={160} danger={200} color="#f97316" />
-          <Row label="Scrubber pH" value={d?.scrubber_ph} unit="" alert={d?.scrubber_ph < 6.5 || d?.scrubber_ph > 8.5} />
-        </Section>
-      </div>
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Section title="Power Output (MW) — Last 5 min">
-          <MiniChart data={history} dataKey="gen_mw" color="#22c55e" domain={[4, 7]} refVal={5.5} unit="MW" />
-        </Section>
-        <Section title="NOx Out SCR (mg/Nm³) — Last 5 min">
-          <MiniChart data={history} dataKey="scr_nox_out" color="#f97316" domain={[0, 250]} refVal={200} unit="mg/Nm³" />
-        </Section>
+        {/* ── Section A: Production Monitoring ── */}
+        <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: 8, padding: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+            ⚡ Production Monitoring
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 10 }}>
+            <div style={{ background: '#1e293b', border: `1.5px solid ${(d?.gen_mw ?? 0) < 5.5 ? '#ef4444' : '#22c55e'}`, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' }}>Gross Output</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: (d?.gen_mw ?? 0) < 5.5 ? '#ef4444' : '#22c55e', lineHeight: 1.1 }}>{d?.gen_mw?.toFixed(2) ?? '\u2014'}</div>
+              <div style={{ fontSize: 9, color: '#64748b' }}>MW  (rated 6.6 MW)</div>
+              <div style={{ height: 3, background: '#0f172a', borderRadius: 99, marginTop: 6 }}>
+                <div style={{ height: '100%', width: `${Math.min(((d?.gen_mw ?? 0) / 6.6) * 100, 100)}%`, background: '#22c55e', borderRadius: 99 }} />
+              </div>
+            </div>
+            <div style={{ background: '#1e293b', border: '1.5px solid #334155', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' }}>Net Export (VSPP)</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#4ade80', lineHeight: 1.1 }}>{d?.net_mw?.toFixed(2) ?? '\u2014'}</div>
+              <div style={{ fontSize: 9, color: '#64748b' }}>MW</div>
+              <div style={{ fontSize: 9, color: '#475569', marginTop: 4 }}>Rev ≈ {d?.net_mw ? (d.net_mw * 4.24 * 24).toFixed(0) : '\u2014'} THB/day</div>
+            </div>
+            <div style={{ background: '#1e293b', border: '1.5px solid #334155', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' }}>MSW Feed Rate</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#f97316', lineHeight: 1.1 }}>{d?.waste_feed_rate?.toFixed(1) ?? '\u2014'}</div>
+              <div style={{ fontSize: 9, color: '#64748b' }}>t/h  (≈ {d?.waste_feed_rate ? (d.waste_feed_rate * 24).toFixed(0) : '\u2014'} t/day)</div>
+              <div style={{ fontSize: 9, color: '#475569', marginTop: 4 }}>LHV {latestFuel?.data?.LHV_kcal_kg ?? '\u2014'} kcal/kg</div>
+            </div>
+            <div style={{ background: '#1e293b', border: '1.5px solid #334155', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' }}>Steam Conditions</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#3b82f6', lineHeight: 1.1 }}>{d?.steam_press?.toFixed(1) ?? '\u2014'} <span style={{ fontSize: 11 }}>bar</span></div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}>{d?.steam_temp?.toFixed(0) ?? '\u2014'} <span style={{ fontSize: 11 }}>°C</span></div>
+              <div style={{ fontSize: 9, color: '#475569' }}>Flow {d?.steam_flow?.toFixed(1) ?? '\u2014'} t/h</div>
+            </div>
+            <div style={{ background: '#1e293b', border: '1.5px solid #334155', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' }}>Cycle Efficiency</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#eab308', lineHeight: 1.1 }}>{d?.dt_cycle_eff_pct?.toFixed(1) ?? '\u2014'}</div>
+              <div style={{ fontSize: 9, color: '#64748b' }}>%  (target ≥ 20%)</div>
+              <div style={{ fontSize: 9, color: '#475569', marginTop: 4 }}>O₂ Furnace {d?.o2_furnace?.toFixed(1) ?? '\u2014'} %</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>Power Output — last 5 min (MW)</div>
+              <MiniChart data={history} dataKey="gen_mw" color="#22c55e" domain={[4, 7]} refVal={5.5} unit="MW" />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>Steam Pressure — last 5 min (bar)</div>
+              <MiniChart data={history} dataKey="steam_press" color="#3b82f6" domain={[35, 45]} unit="bar" />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>Steam Temp — last 5 min (°C)</div>
+              <MiniChart data={history} dataKey="steam_temp" color="#f97316" domain={[380, 420]} unit="°C" />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section B: Emissions Monitoring ── */}
+        <div style={{ background: '#0f172a', border: `1px solid ${apcPass ? '#22c55e33' : '#ef444433'}`, borderRadius: 8, padding: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              🌿 Emissions Monitoring (CEMS)
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6,
+              background: apcPass ? '#052e16' : '#450a0a', border: `1px solid ${apcPass ? '#22c55e' : '#ef4444'}`,
+              borderRadius: 6, padding: '3px 10px', fontSize: 10, fontWeight: 700,
+              color: apcPass ? '#22c55e' : '#ef4444' }}>
+              {apcPass ? <CheckCircle size={12} /> : <XCircle size={12} />}
+              APC {apcPass ? 'PASS' : 'FAIL'}
+            </div>
+            <div style={{ fontSize: 9, color: '#475569' }}>Limit: Thailand MSWI Std. (2566)</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 10 }}>
+            {emBadge(d?.pm_cems,     20,  'PM₁₀ Stack',   'mg/Nm³')}
+            {emBadge(d?.so2_cems,    50,  'SO₂ Stack',          'mg/Nm³')}
+            {emBadge(d?.hcl_cems,    50,  'HCl Stack',               'mg/Nm³')}
+            {emBadge(d?.co_cems,     100, 'CO Stack',                'mg/Nm³')}
+            {emBadge(d?.scr_nox_out, 200, 'NOₓ (SCR out)',      'mg/Nm³')}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>NOₓ SCR Out — last 5 min (mg/Nm³)</div>
+              <MiniChart data={history} dataKey="scr_nox_out" color="#f97316" domain={[0, 250]} refVal={200} unit="mg/Nm³" />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>PM CEMS — last 5 min (mg/Nm³)</div>
+              <MiniChart data={history} dataKey="pm_cems" color="#a78bfa" domain={[0, 25]} refVal={20} unit="mg/Nm³" />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#475569', marginBottom: 3 }}>APC System Status</div>
+              <div style={{ background: '#1e293b', borderRadius: 6, padding: '8px 10px', height: 68, display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
+                <Row label="Scrubber pH"  value={d?.scrubber_ph}  unit=""       alert={d?.scrubber_ph != null && (d.scrubber_ph < 6.5 || d.scrubber_ph > 8.5)} />
+                <Row label="SCR NOx In"   value={d?.scr_nox_in}   unit="mg/Nm³" />
+                <Row label="Baghouse ΔP"  value={d?.baghouse_dp}  unit="mmH₂O" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section C: Furnace quick-look ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Section title="Moving Grate — Zone Temperatures">
+            <ZoneBar label="Zone 1 — Drying"           temp={d?.bed_temp_z1 ?? 0} />
+            <ZoneBar label="Zone 2 — Devolatilization" temp={d?.bed_temp_z2 ?? 0} />
+            <ZoneBar label="Zone 3 — Combustion"       temp={d?.bed_temp_z3 ?? 0} />
+            <ZoneBar label="Zone 4 — Burnout"          temp={d?.bed_temp_z4 ?? 0} />
+            <Row label="Grate Speed"        value={d?.grate_speed} unit="m/h" />
+            <Row label="FG Temp (Econ.out)" value={d?.fgt_out}     unit="°C" />
+          </Section>
+          <Section title="Boiler / Steam Cycle">
+            <Row label="Steam Flow"         value={d?.steam_flow}       unit="t/h" />
+            <Row label="Drum Level"         value={d?.drum_level}       unit="mm" />
+            <Row label="Feedwater Flow"     value={d?.fw_flow}          unit="t/h" />
+            <Row label="Condenser Pressure" value={d?.condenser_press}  unit="mbar" />
+            <Row label="MSW Moisture"       value={Number(latestFuel?.data?.moisture_pct) || null} unit="%" alert={Number(latestFuel?.data?.moisture_pct) > 50} />
+            <Row label="Fuel LHV"           value={Number(latestFuel?.data?.LHV_kcal_kg) || null} unit="kcal/kg" alert={Number(latestFuel?.data?.LHV_kcal_kg) < 1500} />
+          </Section>
+        </div>
+
       </div>
-    </>
-  )
+    )
+  }
+
 
   const renderCombustion = () => {
     const f = latestFuel?.data ?? {}
