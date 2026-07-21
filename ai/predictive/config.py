@@ -34,8 +34,8 @@ EQUIPMENT: dict[str, dict] = {
         "label": "Steam Turbine",
         "signals": [
             "turbine_speed",       # RPM  — normal ~3000
-            "turbine_inlet_p",     # bar  — normal ~38–40
-            "turbine_inlet_t",     # °C   — normal ~390–400
+            "steam_press",         # bar  — turbine inlet pressure proxy
+            "steam_temp",          # °C   — turbine inlet temp proxy
             "condenser_press",     # bar  — normal ~0.075–0.085
             "hotwell_level",       # %    — normal 45–65
             "cw_in_temp",          # °C   — normal 28–36
@@ -82,21 +82,19 @@ EQUIPMENT: dict[str, dict] = {
     "transformer": {
         "label": "GSU Transformer",
         "signals": [
-            "tx_top_oil_temp",     # °C   — normal 55–75, alarm 80
-            "tx_winding_temp",     # °C   — normal 65–85, alarm 95
-            "tx_load_pct",         # %    — normal 80–95
             "gen_voltage",         # kV   — normal 10.8–11.2
             "gen_mw",              # MW   — affects transformer load
+            "gen_mvar",            # MVAr — reactive power
+            "gen_pf",              # p.f. — normal 0.85–1.0
+            "aux_mw",              # MW   — auxiliary consumption
         ],
         "limits": {
-            "tx_top_oil_temp":  (20, 100),
-            "tx_winding_temp":  (20, 120),
-            "tx_load_pct":      (0, 110),
+            "gen_voltage": (10.0, 12.0),
+            "gen_pf":      (0.7, 1.0),
         },
         "alert_rules": {
-            "tx_top_oil_temp":  {"max": 80, "severity": "warning"},
-            "tx_winding_temp":  {"max": 95, "severity": "critical"},
-            "tx_load_pct":      {"max": 100, "severity": "warning"},
+            "gen_voltage": {"min": 10.5, "max": 11.5, "severity": "warning"},
+            "gen_pf":      {"min": 0.80, "severity": "warning"},
         },
         "model_path": "ai/predictive/models/transformer_lstm.pt",
     },

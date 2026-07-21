@@ -259,7 +259,7 @@ async def latest():
         res = (
             supabase.table("plant_telemetry")
             .select("*")
-            .order("created_at", desc=True)
+            .order("ts", desc=True)
             .limit(1)
             .execute()
         )
@@ -278,8 +278,8 @@ async def telemetry(limit: int = 100):
     try:
         res = (
             supabase.table("plant_telemetry")
-            .select("created_at,gen_mw,net_mw,steam_press,steam_temp,o2_furnace,pm_cems,scr_nox_out,source")
-            .order("created_at", desc=True)
+            .select("ts,gen_mw,net_mw,steam_press,steam_temp,o2_furnace,pm_cems,scr_nox_out,source")
+            .order("ts", desc=True)
             .limit(min(limit, 1000))
             .execute()
         )
@@ -304,7 +304,7 @@ async def alerts(
             q = q.eq("severity", severity)
         if unacked_only:
             q = q.eq("acknowledged", False)
-        res = q.order("created_at", desc=True).limit(min(limit, 500)).execute()
+        res = q.order("ts", desc=True).limit(min(limit, 500)).execute()
         return {"count": len(res.data), "alerts": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

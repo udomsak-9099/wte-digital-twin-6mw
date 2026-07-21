@@ -31,11 +31,11 @@ create policy "service_update_lab"
   using (auth.role() = 'service_role');
 
 -- ── Index for time-series queries ────────────────────────────────────────────
-create index if not exists idx_telemetry_created_at
-  on plant_telemetry (created_at desc);
+create index if not exists idx_telemetry_ts
+  on plant_telemetry (ts desc);
 
-create index if not exists idx_lab_created_at
-  on lab_samples (created_at desc);
+create index if not exists idx_lab_sampled_at
+  on lab_samples (sampled_at desc);
 
 create index if not exists idx_lab_type
   on lab_samples (sample_type);

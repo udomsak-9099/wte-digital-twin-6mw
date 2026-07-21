@@ -1878,7 +1878,7 @@ export default function App() {
               background: '#1e40af', border: 'none', color: '#fff', fontWeight: 600,
             }}>↓ Export CSV</button>
             <div style={{ fontSize: 9, color: '#334155', padding: '4px 8px', background: '#0f172a', borderRadius: 4, border: '1px solid #1e293b' }}>
-              n={history.length} samples · {history.length > 0 ? new Date((history[history.length-1] as Record<string, unknown>).created_at as string).toLocaleString('en-GB') : '—'}
+              n={history.length} samples · {history.length > 0 ? new Date((history[history.length-1] as Record<string, unknown>).ts as string).toLocaleString('en-GB') : '—'}
             </div>
           </div>
         </div>
@@ -1994,7 +1994,7 @@ export default function App() {
               <ResponsiveContainer width="100%" height={100}>
                 <LineChart data={history as Record<string, unknown>[]}>
                   <CartesianGrid strokeDasharray="2 2" stroke="#1e293b" />
-                  <XAxis dataKey="created_at" tick={false} axisLine={false} />
+                  <XAxis dataKey="ts" tick={false} axisLine={false} />
                   <YAxis domain={[spcGen.lcl * 0.95, spcGen.ucl * 1.05]} tick={{ fontSize: 8, fill: '#475569' }} width={30} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: 'none', fontSize: 9 }} />
                   <ReferenceLine y={spcGen.ucl}  stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'UCL', fill: '#ef4444', fontSize: 8 }} />

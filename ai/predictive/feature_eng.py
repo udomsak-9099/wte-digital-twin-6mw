@@ -14,25 +14,25 @@ def fetch_telemetry(
     limit: int = 2000,
 ) -> pd.DataFrame:
     """Fetch recent telemetry rows, return DataFrame with signal columns."""
-    cols = "created_at," + ",".join(signals)
+    cols = "ts," + ",".join(signals)
     res = (
         supabase.table("plant_telemetry")
         .select(cols)
-        .order("created_at", desc=True)
+        .order("ts", desc=True)
         .limit(limit)
         .execute()
     )
     if not res.data:
-        return pd.DataFrame(columns=["created_at"] + signals)
+        return pd.DataFrame(columns=["ts"] + signals)
 
     df = pd.DataFrame(res.data)
-    df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
-    df = df.sort_values("created_at").reset_index(drop=True)
+    df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    df = df.sort_values("ts").reset_index(drop=True)
 
     for col in signals:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    df[signals] = df[signals].ffill().bfill()
+    df[signals] = df[signals].ffill().bfill().fillna(0.0)
     return df
 
 
